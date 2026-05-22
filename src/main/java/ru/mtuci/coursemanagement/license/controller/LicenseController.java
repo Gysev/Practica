@@ -2,7 +2,9 @@ package ru.mtuci.coursemanagement.license.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,7 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import ru.mtuci.coursemanagement.license.config.KeyPairHolder;
+import ru.mtuci.coursemanagement.eds.EdsSigningMaterials;
 import ru.mtuci.coursemanagement.license.dto.ActivateLicenseRequest;
 import ru.mtuci.coursemanagement.license.dto.CreatedLicenseDto;
 import ru.mtuci.coursemanagement.license.dto.CreateLicenseRequest;
@@ -31,13 +33,29 @@ import java.util.Base64;
 public class LicenseController {
 
     private final LicenseManagementService licenseService;
-    private final KeyPairHolder signingKeys;
+    private final EdsSigningMaterials signingMaterials;
 
     @GetMapping(value = "/signing-public-key.pem", produces = MediaType.TEXT_PLAIN_VALUE)
     public String signingPublicKeyPem() {
-        byte[] der = signingKeys.publicKey().getEncoded();
+        byte[] der = signingMaterials.publicKey().getEncoded();
         String b64 = Base64.getMimeEncoder().encodeToString(der);
         return "-----BEGIN PUBLIC KEY-----\n" + b64 + "\n-----END PUBLIC KEY-----\n";
+    }
+
+    /** X.509 сертификат ключа подписи (для проверки ЭЦП на клиенте). */
+    @GetMapping(value = "/signing-certificate.pem", produces = MediaType.TEXT_PLAIN_VALUE)
+    public ResponseEntity<String> signingCertificatePem() {
+        if (signingMaterials.signingCertificate() == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Сертификат не настроен (ожидается PKCS#12 с цепочкой)");
+        }
+        try {
+            byte[] der = signingMaterials.signingCertificate().getEncoded();
+            String b64 = Base64.getMimeEncoder().encodeToString(der);
+            return ResponseEntity.ok("-----BEGIN CERTIFICATE-----\n" + b64 + "\n-----END CERTIFICATE-----\n");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Не удалось выдать PEM");
+        }
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)

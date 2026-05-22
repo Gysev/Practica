@@ -19,16 +19,25 @@ Upstream: https://github.com/Gysev/Practica
 
 | HTTP | Путь | Доступ | Назначение |
 |------|------|--------|-------------|
-| `GET` | `/api/licenses/signing-public-key.pem` | без авторизации | публичный ключ RSA клиенту для проверки ЭЦП |
+| `GET` | `/api/licenses/signing-public-key.pem` | без авторизации | SPKI публичного ключа (PEM) |
+| `GET` | `/api/licenses/signing-certificate.pem` | без авторизации | сертификат X.509 ключа подписи (PEM) |
 | `POST` | `/api/licenses` | **ADMIN** | создание `{ "userId", "validityPeriodDays" }` → ключ + `CREATED` |
 | `POST` | `/api/licenses/{licenseKey}/activate` | владелец или ADMIN | `{ "deviceExternalId" }` → `ACTIVE`, срок действия |
 | `POST` | `/api/licenses/verify` | владелец или ADMIN | `{ "licenseKey", "deviceExternalId" }` → `Ticket` + подпись |
 | `POST` | `/api/licenses/{licenseKey}/renew` | владелец или ADMIN | `{ "additionalDays" }`: для `ACTIVE` продлевается `validUntil`, для `CREATED` — `validityPeriodDays` |
 
 - **`Ticket`**: текущее время сервера, TTL тикета (сек), даты активации и истечения лицензии, `userId`, `deviceId`, флаг блокировки.
-- **`TicketResponse`**: объект `ticket` + **`electronicSignatureBase64`** (RSA-SHA256 по каноническому JSON билета).
+- **`TicketResponse`**: объект `ticket` + **`electronicSignatureBase64`** — ЭЦП `SHA256withRSA` над телом билета; тело после **RFC 8785 JCS** (канонический JSON как UTF‑8 байты).
 
 Переменные `LICENSE_*` — в `env.example`, префикс в `application.yaml` — `license.*`.
+
+## Задание 1.3 — модуль ЭЦП (RFC 8785 / JCS + PKCS#12)
+
+- Канонизация JSON билета перед подписью: **RFC 8785** ([JCS](https://www.rfc-editor.org/rfc/rfc8785)), библиотека `org.erdtman.jcs.JsonCanonicalizer` — см. [`Rfc8785TicketCanon`](src/main/java/ru/mtuci/coursemanagement/eds/jcs/Rfc8785TicketCanon.java).
+- Подпись и проверка: `java.security.Signature` **SHA256withRSA** над UTF-8 октетами JCS; интеграция с лицензиями — [`TicketSignatureService`](src/main/java/ru/mtuci/coursemanagement/license/service/TicketSignatureService.java).
+- Хранилище: **PKCS#12** с закрытым ключом и **X.509** (загрузка в [`EdsSigningBeans`](src/main/java/ru/mtuci/coursemanagement/eds/config/EdsSigningBeans.java)); в dev — RSA 2048 + самоподписанный сертификат (BouncyCastle).
+- Публичные эндпоинты (без JWT): `GET /api/licenses/signing-public-key.pem`, `GET /api/licenses/signing-certificate.pem`.
+- **CI / GitHub Secrets**: пошагово в [`docs/eds-github-secrets.md`](docs/eds-github-secrets.md); workflow декодирует опциональный secret `LICENSE_KEYSTORE_B64`.
 
 ## CI/CD
 

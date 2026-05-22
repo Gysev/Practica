@@ -1,10 +1,12 @@
-package ru.mtuci.coursemanagement.license.config;
+package ru.mtuci.coursemanagement.eds.config;
 
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.util.StringUtils;
+import ru.mtuci.coursemanagement.eds.EdsSigningMaterials;
+import ru.mtuci.coursemanagement.eds.internal.EdsDevSelfSignedCertificate;
+import ru.mtuci.coursemanagement.license.config.LicenseProperties;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -14,47 +16,49 @@ import java.security.KeyPairGenerator;
 import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.cert.X509Certificate;
 
 /**
- * PKCS#12 (прод), иначе — однаобщая пара RSA 2048 при {@code generate-dev-key=true}.
+ * Загрузка PKCS#12 (прод и CI через Secrets) или dev-пары RSA + самоподписанный сертификат.
  */
 @Configuration
-@EnableConfigurationProperties(LicenseProperties.class)
-public class LicenseSigningBeans {
+public class EdsSigningBeans {
 
-    private static volatile KeyPairHolder cachedDevPair;
+    private static volatile EdsSigningMaterials cachedDevMaterials;
 
     @Bean
-    public KeyPairHolder licenseSigningKeypair(LicenseProperties props) throws GeneralSecurityException, IOException {
+    public EdsSigningMaterials edsSigningMaterials(LicenseProperties props) throws Exception {
         LicenseProperties.Signing s = props.getSigning();
         if (hasPkcs12(s)) {
             return loadPkcs12(s);
         }
         if (s.isGenerateDevKey()) {
-            return devKeyPairHolder();
+            return devSigningMaterials();
         }
         throw new IllegalStateException(
-                "Задайте license.signing.keystore-location + keystore-password "
-                        + "или включите license.signing.generate-dev-key=true для разработки");
+                "EDS: задайте license.signing.keystore-location + keystore-password "
+                        + "или license.signing.generate-dev-key=true для разработки.");
     }
 
-    private static KeyPairHolder devKeyPairHolder() throws GeneralSecurityException {
-        KeyPairHolder h = cachedDevPair;
-        if (h != null) {
-            return h;
+    private static EdsSigningMaterials devSigningMaterials() throws Exception {
+        EdsSigningMaterials m = cachedDevMaterials;
+        if (m != null) {
+            return m;
         }
-        synchronized (LicenseSigningBeans.class) {
-            if (cachedDevPair == null) {
+        synchronized (EdsSigningBeans.class) {
+            if (cachedDevMaterials == null) {
                 KeyPairGenerator g = KeyPairGenerator.getInstance("RSA");
                 g.initialize(2048);
                 KeyPair kp = g.generateKeyPair();
-                cachedDevPair = new KeyPairHolder(kp.getPublic(), kp.getPrivate());
+                X509Certificate cert =
+                        EdsDevSelfSignedCertificate.create(kp, "CN=Practica EDS Dev, OU=Licensing, O=Course");
+                cachedDevMaterials = new EdsSigningMaterials(kp.getPrivate(), kp.getPublic(), cert);
             }
-            return cachedDevPair;
+            return cachedDevMaterials;
         }
     }
 
-    private static KeyPairHolder loadPkcs12(LicenseProperties.Signing s)
+    private static EdsSigningMaterials loadPkcs12(LicenseProperties.Signing s)
             throws GeneralSecurityException, IOException {
         DefaultResourceLoader rl = new DefaultResourceLoader();
         char[] pwd = s.getKeystorePassword().toCharArray();
@@ -64,7 +68,8 @@ public class LicenseSigningBeans {
         }
         PrivateKey privateKey = (PrivateKey) ks.getKey(s.getKeyAlias(), pwd);
         PublicKey publicKey = ks.getCertificate(s.getKeyAlias()).getPublicKey();
-        return new KeyPairHolder(publicKey, privateKey);
+        X509Certificate cert = (X509Certificate) ks.getCertificate(s.getKeyAlias());
+        return new EdsSigningMaterials(privateKey, publicKey, cert);
     }
 
     private static boolean hasPkcs12(LicenseProperties.Signing s) {

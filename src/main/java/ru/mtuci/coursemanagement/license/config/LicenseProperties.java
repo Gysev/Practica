@@ -6,7 +6,7 @@ import org.springframework.validation.annotation.Validated;
 import java.time.Duration;
 
 /**
- * Длительность жизни тикета верификации и загрузка ключа RSA для ЭЦП.
+ * Длительность жизни тикета верификации и PKCS#12 для ЭЦП (см. {@link ru.mtuci.coursemanagement.eds.config.EdsSigningBeans}).
  */
 @ConfigurationProperties(prefix = "license")
 @Validated

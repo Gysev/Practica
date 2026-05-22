@@ -63,6 +63,24 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- RFC 8785 JSON Canonicalization Scheme (JCS) -->
+        <dependency>
+            <groupId>io.github.erdtman</groupId>
+            <artifactId>java-json-canonicalization</artifactId>
+            <version>1.0</version>
+        </dependency>
+        <!-- Self-signed X.509 в dev (PKCS#12 в проде из keytool/CI) -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+            <version>1.78.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk18on</artifactId>
+            <version>1.78.1</version>
+        </dependency>
+
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>

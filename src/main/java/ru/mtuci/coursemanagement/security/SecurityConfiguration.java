@@ -65,6 +65,8 @@ public class SecurityConfiguration {
                         .requestMatchers(mvc.pattern("/actuator/info")).permitAll()
                         .requestMatchers(mvc.pattern(HttpMethod.GET, "/api/licenses/signing-public-key.pem"))
                         .permitAll()
+                        .requestMatchers(mvc.pattern(HttpMethod.GET, "/api/licenses/signing-certificate.pem"))
+                        .permitAll()
                         .requestMatchers(mvc.pattern(HttpMethod.POST, "/api/licenses")).hasRole("ADMIN")
                         .requestMatchers(mvc.pattern("/api/licenses/**")).authenticated()
                         .requestMatchers(mvc.pattern(HttpMethod.POST, "/api/xml/**"))

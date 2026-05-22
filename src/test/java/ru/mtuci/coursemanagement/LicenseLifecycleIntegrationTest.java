@@ -48,6 +48,8 @@ class LicenseLifecycleIntegrationTest {
 
         mockMvc.perform(get("/api/licenses/signing-public-key.pem"))
                 .andExpect(status().isOk());
+        mockMvc.perform(get("/api/licenses/signing-certificate.pem"))
+                .andExpect(status().isOk());
 
         MvcResult createRes = mockMvc.perform(post("/api/licenses")
                         .header("Authorization", "Bearer " + adminToken)

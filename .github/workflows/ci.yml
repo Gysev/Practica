@@ -22,5 +22,18 @@ jobs:
       - name: Maven wrapper executable (Unix)
         run: chmod +x mvnw
 
+      # Опционально: PKCS#12 из GitHub Secrets (см. docs/eds-github-secrets.md)
+      - name: PKCS#12 для ЭЦП из Secrets
+        if: ${{ secrets.LICENSE_KEYSTORE_B64 != '' }}
+        env:
+          STORE_B64: ${{ secrets.LICENSE_KEYSTORE_B64 }}
+        run: |
+          printf '%s' "$STORE_B64" | base64 -d > "${RUNNER_TEMP}/license-ci.p12"
+          chmod 600 "${RUNNER_TEMP}/license-ci.p12"
+          echo "LICENSE_KEYSTORE_LOCATION=file:${RUNNER_TEMP}/license-ci.p12" >> "$GITHUB_ENV"
+          echo "LICENSE_SIGN_DEV_KEY=false" >> "$GITHUB_ENV"
+
       - name: Build and test
         run: ./mvnw -B verify
+        env:
+          LICENSE_KEYSTORE_PASSWORD: ${{ secrets.LICENSE_KEYSTORE_PASSWORD }}
