@@ -1,8 +1,5 @@
 package ru.mtuci.coursemanagement.eds.jcs;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.erdtman.jcs.JsonCanonicalizer;
 import ru.mtuci.coursemanagement.license.dto.Ticket;
 
 import java.nio.charset.StandardCharsets;
@@ -10,13 +7,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Подписываемый payload билета как UTF-8 октеты по RFC 8785 (JCS через {@link JsonCanonicalizer}).
+ * Подписываемый payload билета как UTF-8 октеты по RFC 8785 (JCS).
  */
 public final class Rfc8785TicketCanon {
-
-    private static final ObjectMapper TO_JSON = new ObjectMapper()
-            .findAndRegisterModules()
-            .setSerializationInclusion(JsonInclude.Include.ALWAYS);
 
     private Rfc8785TicketCanon() {
     }
@@ -36,8 +29,7 @@ public final class Rfc8785TicketCanon {
     }
 
     public static byte[] canonicalUtf8Octets(Ticket ticket) throws Exception {
-        String json = TO_JSON.writeValueAsString(ticketPayloadMap(ticket));
-        return new JsonCanonicalizer(json.getBytes(StandardCharsets.UTF_8)).getEncodedUTF8();
+        return EdsJsonCanon.canonicalUtf8(ticketPayloadMap(ticket));
     }
 
     /** Для диагностики и тестов: канонический JSON строкой. */

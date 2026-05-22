@@ -39,6 +39,23 @@ Upstream: https://github.com/Gysev/Practica
 - Публичные эндпоинты (без JWT): `GET /api/licenses/signing-public-key.pem`, `GET /api/licenses/signing-certificate.pem`.
 - **CI / GitHub Secrets**: пошагово в [`docs/eds-github-secrets.md`](docs/eds-github-secrets.md); workflow декодирует опциональный secret `LICENSE_KEYSTORE_B64`.
 
+## Задание 1.4 — модуль антивирусных сигнатур
+
+- Таблицы и связи см. ER и DDL в [`docs/er-antivirus.md`](docs/er-antivirus.md).
+- ЭЦП: тот же ключ и `EdsDetachedSigner`, что для лицензий (`license.signing.*` / PKCS#12); полезная нагрузка для подписи — канонический JSON (JCS RFC 8785) с ключами **`content`, `name`, `signatureId`, `version`** (см. [`AntivirusEdsPayload`](src/main/java/ru/mtuci/coursemanagement/antivirus/crypto/AntivirusEdsPayload.java)).
+- REST под префиксом `/api/antivirus-signatures` (JWT обязателен; создание / изменение / удаление — **TEACHER** и **ADMIN**):
+
+| HTTP | Путь | Назначение |
+|------|------|-------------|
+| `POST` | `/api/antivirus-signatures` | Создание `{ "name", "content" }` → сохранение, пересчёт ЭЦП, History+Audit (**CREATE**) |
+| `GET` | `/api/antivirus-signatures/{id}` | Чтение сущности по id (в т.ч. с `deleted: true`) |
+| `PUT` | `/api/antivirus-signatures/{id}` | Обновление `{ "name", "content" }` → `version++`, пересчёт ЭЦП, History (**UPDATE**) + Audit |
+| `DELETE` | `/api/antivirus-signatures/{id}` | Логическое удаление (**без** пересчёта ЭЦП), History (**DELETE**) + Audit |
+| `GET` | `/api/antivirus-signatures/export/full` | Полная выгрузка активных строк (`deleted = false`) |
+| `GET` | `/api/antivirus-signatures/export/incremental?since=<ISO-8601>` | Инкремент: все строки с `updatedAt > since`, **включая** удалённые |
+| `GET` | `/api/antivirus-signatures/{id}/history` | История изменений по идентификатору сигнатуры |
+| `GET` | `/api/antivirus-signatures/{id}/audit` | Журнал аудита по идентификатору сигнатуры |
+
 ## CI/CD
 
 Workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml): этапы **test** (`mvn verify`) и сборка артефакта (jar после `package`).
