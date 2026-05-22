@@ -12,6 +12,24 @@ Upstream: https://github.com/Gysev/Practica
 4. **PostgreSQL** — профиль `postgres`; для локальной разработки по умолчанию `dev` + H2 in-memory и консоль `/h2-console`.
 5. **Секреты** — см. файл `env.example`; в проде использовать GitHub Secrets / переменные CI и окружение хостинга.
 
+## Задание 1.2 — модуль лицензий
+
+- Таблицы `devices` и `software_licenses`, связь с пользователем — см. ER и DDL в [`docs/er-licenses.md`](docs/er-licenses.md).
+- REST API (все методы ниже `/api/licenses/...`, кроме отмеченного, требуют JWT; см. ограничения по ролям):
+
+| HTTP | Путь | Доступ | Назначение |
+|------|------|--------|-------------|
+| `GET` | `/api/licenses/signing-public-key.pem` | без авторизации | публичный ключ RSA клиенту для проверки ЭЦП |
+| `POST` | `/api/licenses` | **ADMIN** | создание `{ "userId", "validityPeriodDays" }` → ключ + `CREATED` |
+| `POST` | `/api/licenses/{licenseKey}/activate` | владелец или ADMIN | `{ "deviceExternalId" }` → `ACTIVE`, срок действия |
+| `POST` | `/api/licenses/verify` | владелец или ADMIN | `{ "licenseKey", "deviceExternalId" }` → `Ticket` + подпись |
+| `POST` | `/api/licenses/{licenseKey}/renew` | владелец или ADMIN | `{ "additionalDays" }`: для `ACTIVE` продлевается `validUntil`, для `CREATED` — `validityPeriodDays` |
+
+- **`Ticket`**: текущее время сервера, TTL тикета (сек), даты активации и истечения лицензии, `userId`, `deviceId`, флаг блокировки.
+- **`TicketResponse`**: объект `ticket` + **`electronicSignatureBase64`** (RSA-SHA256 по каноническому JSON билета).
+
+Переменные `LICENSE_*` — в `env.example`, префикс в `application.yaml` — `license.*`.
+
 ## CI/CD
 
 Workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml): этапы **test** (`mvn verify`) и сборка артефакта (jar после `package`).

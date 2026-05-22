@@ -17,6 +17,14 @@ jwt:
   refresh-ttl: ${JWT_REFRESH_TTL:168h}
   secret: ${JWT_SECRET:dev-secret-must-be-at-least-256-bits-long-for-hs256-algo!!!}
 
+license:
+  ticket-lifetime: ${LICENSE_TICKET_TTL:5m}
+  signing:
+    generate-dev-key: ${LICENSE_SIGN_DEV_KEY:true}
+    keystore-location: ${LICENSE_KEYSTORE_LOCATION:}
+    keystore-password: ${LICENSE_KEYSTORE_PASSWORD:}
+    key-alias: ${LICENSE_KEY_ALIAS:license}
+
 management:
   endpoints:
     web:
