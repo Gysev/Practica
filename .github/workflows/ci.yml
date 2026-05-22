@@ -19,21 +19,24 @@ jobs:
           distribution: "temurin"
           cache: maven
 
-      - name: Maven wrapper executable (Unix)
-        run: chmod +x mvnw
-
-      # Опционально: PKCS#12 из GitHub Secrets (см. docs/eds-github-secrets.md)
-      - name: PKCS#12 для ЭЦП из Secrets
-        if: ${{ secrets.LICENSE_KEYSTORE_B64 != '' }}
-        env:
-          STORE_B64: ${{ secrets.LICENSE_KEYSTORE_B64 }}
-        run: |
-          printf '%s' "$STORE_B64" | base64 -d > "${RUNNER_TEMP}/license-ci.p12"
-          chmod 600 "${RUNNER_TEMP}/license-ci.p12"
-          echo "LICENSE_KEYSTORE_LOCATION=file:${RUNNER_TEMP}/license-ci.p12" >> "$GITHUB_ENV"
-          echo "LICENSE_SIGN_DEV_KEY=false" >> "$GITHUB_ENV"
-
+      # Условия if: не могут использовать secrets.* — см. ошибку "Unrecognized named-value: secrets".
+      # PKCS#12: secrets LICENSE_KEYSTORE_B64 и LICENSE_KEYSTORE_PASSWORD (название B64 — буква B, от Base64).
       - name: Build and test
-        run: ./mvnw -B verify
         env:
+          LICENSE_KEYSTORE_B64: ${{ secrets.LICENSE_KEYSTORE_B64 }}
           LICENSE_KEYSTORE_PASSWORD: ${{ secrets.LICENSE_KEYSTORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          chmod +x mvnw
+          if [ -n "${LICENSE_KEYSTORE_B64:-}" ]; then
+            tmp_keystore="${RUNNER_TEMP}/license-ci.p12"
+            printf '%s' "$LICENSE_KEYSTORE_B64" | base64 --decode > "$tmp_keystore"
+            chmod 600 "$tmp_keystore"
+            if [ ! -s "$tmp_keystore" ]; then
+              echo "Decoded LICENSE_KEYSTORE_B64 is empty — check secret (name: LICENSE_KEYSTORE_B64)." >&2
+              exit 1
+            fi
+            export LICENSE_KEYSTORE_LOCATION="file:${tmp_keystore}"
+            export LICENSE_SIGN_DEV_KEY=false
+          fi
+          ./mvnw -B verify
