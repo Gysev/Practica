@@ -56,6 +56,17 @@ Upstream: https://github.com/Gysev/Practica
 | `GET` | `/api/antivirus-signatures/{id}/history` | История изменений по идентификатору сигнатуры |
 | `GET` | `/api/antivirus-signatures/{id}/audit` | Журнал аудита по идентификатору сигнатуры |
 
+## Задание 1.5 — бинарный API выдачи (`multipart/mixed`)
+
+- Спецификация бинарного манифеста, кодека payload и сборки multipart: [`docs/binary-api-antivirus.md`](docs/binary-api-antivirus.md).
+- Ответ **`multipart/mixed`**, две части `application/octet-stream`: `manifest.bin` (подписанный манифест) и `signature-payload.bin`.
+- Целые в манифесте и строках кодека — в **little-endian**; контроль целостности второй части — **CRC32** в манифесте; корневой блок манифеста (первые 40 байт) подписан **`EdsDetachedSigner.signBytesPkcs1`** (**SHA256withRSA**, PKCS#1).
+
+| HTTP | Путь | Назначение |
+|------|------|-------------|
+| `GET` | `/api/antivirus-signatures/export/binary/full` | Полная бинарная выдача (только активные записи), как для JSON `/export/full` |
+| `GET` | `/api/antivirus-signatures/export/binary/incremental?since=` | Инкрементальная выдача (включая `deleted`), как для JSON `/export/incremental` |
+
 ## CI/CD
 
 Workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml): этапы **test** (`mvn verify`) и сборка артефакта (jar после `package`).

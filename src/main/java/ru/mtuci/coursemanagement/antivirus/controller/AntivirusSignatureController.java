@@ -2,7 +2,9 @@ package ru.mtuci.coursemanagement.antivirus.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,6 +22,7 @@ import ru.mtuci.coursemanagement.antivirus.dto.AntivirusSignatureExportRow;
 import ru.mtuci.coursemanagement.antivirus.dto.AntivirusSignatureHistoryDto;
 import ru.mtuci.coursemanagement.antivirus.dto.CreateAntivirusSignatureRequest;
 import ru.mtuci.coursemanagement.antivirus.dto.UpdateAntivirusSignatureRequest;
+import ru.mtuci.coursemanagement.antivirus.service.AntivirusBinaryExportService;
 import ru.mtuci.coursemanagement.antivirus.service.AntivirusSignatureManagementService;
 
 import java.time.Instant;
@@ -32,6 +35,7 @@ import java.util.List;
 public class AntivirusSignatureController {
 
     private final AntivirusSignatureManagementService managementService;
+    private final AntivirusBinaryExportService binaryExportService;
 
     @PostMapping
     public AntivirusSignatureDto create(
@@ -53,6 +57,40 @@ public class AntivirusSignatureController {
         } catch (DateTimeParseException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ожидался параметр since в формате ISO-8601 Instant");
         }
+    }
+
+    /** Бинарная полная выгрузка активных записей как {@code multipart/mixed} (часть 1 — манифест, часть 2 — payload). */
+    @GetMapping("/export/binary/full")
+    public ResponseEntity<byte[]> exportBinaryFull() {
+        try {
+            AntivirusBinaryExportService.BinaryMultipartEnvelope env =
+                    binaryExportService.multipartFullExport();
+            return multipartResponse(env);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Не удалось сформировать бинарную выдачу", e);
+        }
+    }
+
+    @GetMapping("/export/binary/incremental")
+    public ResponseEntity<byte[]> exportBinaryIncremental(@RequestParam String since) {
+        String trimmed = since == null ? "" : since.trim();
+        try {
+            AntivirusBinaryExportService.BinaryMultipartEnvelope env = binaryExportService.multipartIncrementalExport(
+                    Instant.parse(trimmed));
+            return multipartResponse(env);
+        } catch (DateTimeParseException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ожидался параметр since в формате ISO-8601 Instant");
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Не удалось сформировать инкрементальную выдачу", e);
+        }
+    }
+
+    private static ResponseEntity<byte[]> multipartResponse(AntivirusBinaryExportService.BinaryMultipartEnvelope env) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_TYPE, org.springframework.http.MediaType.MULTIPART_MIXED_VALUE
+                + "; boundary="
+                + env.boundary());
+        return new ResponseEntity<>(env.body(), headers, HttpStatus.OK);
     }
 
     @GetMapping("/{id}/history")
