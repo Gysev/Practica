@@ -3,6 +3,10 @@ spring:
     name: course-management
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
+  servlet:
+    multipart:
+      max-file-size: ${MULTIPART_MAX_FILE_SIZE:64MB}
+      max-request-size: ${MULTIPART_MAX_REQUEST_SIZE:65MB}
   jpa:
     open-in-view: false
     show-sql: true
@@ -39,6 +43,16 @@ app:
   plugin:
     url: ${APP_PLUGIN_URL:}
   seed-demo-users: ${APP_SEED_DEMO_USERS:true}
+
+signature:
+  minio:
+    enabled: ${SIGNATURE_MINIO_ENABLED:false}
+    endpoint: ${MINIO_ENDPOINT:http://127.0.0.1:9000}
+    region: ${MINIO_REGION:us-east-1}
+    access-key: ${MINIO_ACCESS_KEY:}
+    secret-key: ${MINIO_SECRET_KEY:}
+    bucket: ${MINIO_BUCKET:antivirus-signature-files}
+    presign-ttl: ${MINIO_PRESIGN_TTL:15m}
 
 ---
 spring:

@@ -1,0 +1,46 @@
+# MinIO для доп. задания 1.6 (объектное хранилище для файлов «сигнатур»).
+# Запуск: docker compose -f docker-compose.minio.yml up -d
+#
+# После запуска в консоли MinIO (http://localhost:9001) создайте сервисный access key для приложения.
+# В Spring передайте не root-пары MINIO_ROOT_*, а отдельные ключи сервиса (см. docs/signature-files-minio.md).
+
+services:
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin-change-me}
+    volumes:
+      - minio-data:/data
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+        echo "Ожидание API MinIO..."
+        for i in $$(seq 1 40); do
+          if wget -qO- http://minio:9000/minio/health/live >/dev/null 2>&1; then
+            break
+          fi
+          sleep 2
+        done
+        mc alias set dock http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}"
+        mc mb --ignore-existing dock/$${MINIO_BUCKET:-antivirus-signature-files}
+        mc anonymous set none dock/$${MINIO_BUCKET:-antivirus-signature-files}
+        echo "Бакет «$${MINIO_BUCKET:-antivirus-signature-files}» приватный (без анонимного доступа)."
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin-change-me}
+      MINIO_BUCKET: ${MINIO_BUCKET:-antivirus-signature-files}
+
+volumes:
+  minio-data:

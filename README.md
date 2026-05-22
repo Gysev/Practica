@@ -67,6 +67,17 @@ Upstream: https://github.com/Gysev/Practica
 | `GET` | `/api/antivirus-signatures/export/binary/full` | Полная бинарная выдача (только активные записи), как для JSON `/export/full` |
 | `GET` | `/api/antivirus-signatures/export/binary/incremental?since=` | Инкрементальная выдача (включая `deleted`), как для JSON `/export/incremental` |
 
+## Дополнительное задание 1.6 — объекты в MinIO (файлы сигнатур)
+
+- По умолчанию выключено: `SIGNATURE_MINIO_ENABLED=false`. При `true` поднимается клиент MinIO, создаётся бакет при необходимости, данные сохраняются в таблице `antivirus_signature_files`; исходный файл — только в объектном хранилище (**приватный** бакет; для чтения — **pre-signed** GET).
+- **Доступ к API**: только JWT с ролью **ADMIN**, префикс `/api/admin/antivirus-signature-files`. В приложение задаются отдельные `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` (не root-пара контейнера).
+- Инфраструктура: [`docker-compose.minio.yml`](docker-compose.minio.yml). Подробности и переменные: [`docs/signature-files-minio.md`](docs/signature-files-minio.md).
+
+| HTTP | Путь | Назначение |
+|------|------|------------|
+| `POST` | `/api/admin/antivirus-signature-files` | Загрузка одного файла (`multipart/form-data`, поле `file`) → метаданные + SHA-256 в БД, объект в MinIO |
+| `POST` | `/api/admin/antivirus-signature-files/presigned-download-urls` | JSON `{"ids":[…]}` → список временных URL для GET из закрытого бакета |
+
 ## CI/CD
 
 Workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml): этапы **test** (`mvn verify`) и сборка артефакта (jar после `package`).

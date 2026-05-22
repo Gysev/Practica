@@ -78,6 +78,7 @@ public class SecurityConfiguration {
                         .requestMatchers(mvc.pattern(HttpMethod.DELETE, "/api/antivirus-signatures/*"))
                         .hasAnyRole("TEACHER", "ADMIN")
                         .requestMatchers(mvc.pattern("/api/antivirus-signatures/**")).authenticated()
+                        .requestMatchers(mvc.pattern("/api/admin/**")).hasRole("ADMIN")
                         .requestMatchers(mvc.pattern("/api/proxy")).hasRole("ADMIN")
                         .requestMatchers(mvc.pattern("/actuator/**")).hasRole("ADMIN")
                         .anyRequest().authenticated())
