@@ -1,0 +1,31 @@
+name: Practices (C++ CMake, Windows)
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "practices/**"
+  pull_request:
+    branches: [main, master]
+    paths:
+      - "practices/**"
+  workflow_dispatch:
+
+jobs:
+  practice2_1-win32-tray:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: practices/Practice2_1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure CMake
+        run: cmake -B build -G "Visual Studio 17 2022" -A x64
+
+      - name: Build Release
+        run: cmake --build build --config Release
+
+      - name: Binary exists
+        run: Test-Path build/Release/practice_tray_app.exe
